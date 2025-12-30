@@ -34,7 +34,7 @@ export default function Login() {
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <AppHeader title="Вход" />
 
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
         <TextInput
           placeholder="Имейл"
           placeholderTextColor="#999"
@@ -57,7 +57,7 @@ export default function Login() {
         </Pressable>
 
         <Pressable style={styles.google} onPress={signInWithGoogle}>
-          <Text style={styles.primaryText}>Google</Text>
+          <Text style={styles.primaryText}>Вход с Google</Text>
         </Pressable>
 
         <Pressable onPress={() => router.push('/register')}>
@@ -74,7 +74,6 @@ const styles = StyleSheet.create({
     margin: 20,
     padding: 20,
     borderRadius: 20,
-    backgroundColor: '#132B44',
   },
   input: {
     borderBottomWidth: 1,

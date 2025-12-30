@@ -1,68 +1,104 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import AppHeader from '../components/AppHeader';
+import { translateAuthError } from '../lib/authErrors';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../lib/theme';
 
 export default function Register() {
+  const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   async function signUp() {
+    if (password.length < 8) {
+      alert('Паролата трябва да е поне 8 символа');
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: 'exp://localhost:19000',
+        emailRedirectTo: 'destinationsplus://login',
       },
     });
 
     if (error) {
-      alert(error.message);
+      alert(translateAuthError(error.message));
     } else {
-      alert('Провери имейла си за потвърждение');
+      alert('Провери имейла си за потвърждение 📧');
       router.replace('/login');
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Регистрация</Text>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <AppHeader title="Регистрация" />
 
-      <TextInput
-        placeholder="Имейл"
-        value={email}
-        onChangeText={setEmail}
-        style={styles.input}
-      />
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <TextInput
+          placeholder="Имейл"
+          placeholderTextColor="#999"
+          value={email}
+          onChangeText={setEmail}
+          style={[styles.input, { color: theme.text }]}
+        />
 
-      <TextInput
-        placeholder="Парола (мин. 6 символа)"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
+        <TextInput
+          placeholder="Парола (мин. 8 символа)"
+          placeholderTextColor="#999"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          style={[styles.input, { color: theme.text }]}
+        />
 
-      <Pressable style={styles.button} onPress={signUp}>
-        <Text style={styles.buttonText}>Създай профил</Text>
-      </Pressable>
+        <Pressable style={styles.primary} onPress={signUp}>
+          <Text style={styles.primaryText}>Създай профил</Text>
+        </Pressable>
+
+        <Pressable onPress={() => router.replace('/login')}>
+          <Text style={styles.link}>Вече имаш профил? Вход</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24 },
-  title: { fontSize: 28, marginBottom: 20 },
+  container: {
+    flex: 1,
+  },
+  card: {
+    margin: 20,
+    padding: 22,
+    borderRadius: 20,
+  },
   input: {
-    borderWidth: 1,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderColor: '#2E4A67',
+    paddingVertical: 12,
+    marginBottom: 18,
+    fontSize: 16,
   },
-  button: {
+  primary: {
     backgroundColor: '#1E90FF',
-    padding: 14,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginTop: 10,
   },
-  buttonText: { color: '#fff', textAlign: 'center' },
+  primaryText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  link: {
+    marginTop: 18,
+    textAlign: 'center',
+    color: '#4DA3FF',
+    fontSize: 15,
+  },
 });

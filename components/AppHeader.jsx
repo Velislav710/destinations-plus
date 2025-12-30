@@ -8,11 +8,19 @@ export default function AppHeader({ title }) {
     <View style={[styles.header, { backgroundColor: theme.bg }]}>
       <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
 
-      <Pressable onPress={toggleTheme}>
-        <Text style={{ color: theme.secondary }}>
-          {mode === 'dark' ? '☀️' : '🌙'}
-        </Text>
-      </Pressable>
+      <Pressable
+  onPress={toggleTheme}
+  style={{
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: theme.card,
+  }}
+>
+  <Text style={{ fontSize: 18 }}>
+    {mode === 'dark' ? '☀️' : '🌙'}
+  </Text>
+</Pressable>
+
     </View>
   );
 }
