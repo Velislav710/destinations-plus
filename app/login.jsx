@@ -1,108 +1,95 @@
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { supabase } from '../lib/supabase';
+import { useTheme } from '../lib/theme';
 
 export default function Login() {
-  const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  async function signIn() {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      alert(error.message);
+    } else {
+      router.replace('/(app)/home');
+    }
+  }
+
+  async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+
+    if (error) alert(error.message);
+  }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <View style={[styles.container, theme === 'dark' && styles.dark]}>
+      <Pressable onPress={toggleTheme}>
+        <Text style={styles.switch}>Смени тема</Text>
+      </Pressable>
 
       <Text style={styles.title}>Вход</Text>
-      <Text style={styles.subtitle}>
-        Влез в ДестинацииПлюс и планирай интелигентно своето пътуване
-      </Text>
 
       <TextInput
         placeholder="Имейл"
-        placeholderTextColor="#999"
+        value={email}
+        onChangeText={setEmail}
         style={styles.input}
-        keyboardType="email-address"
-        autoCapitalize="none"
       />
 
       <TextInput
         placeholder="Парола"
-        placeholderTextColor="#999"
-        style={styles.input}
         secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+        style={styles.input}
       />
 
-      <Pressable style={styles.loginButton}>
-        <Text style={styles.loginText}>Вход</Text>
+      <Pressable style={styles.button} onPress={signIn}>
+        <Text style={styles.buttonText}>Вход</Text>
       </Pressable>
 
-      <Pressable style={styles.googleButton}>
-        <Text style={styles.googleText}>Вход с Google</Text>
+      <Pressable style={styles.google} onPress={signInWithGoogle}>
+        <Text style={styles.buttonText}>Вход с Google</Text>
       </Pressable>
 
-      <Pressable onPress={() => router.replace('/register')}>
-        <Text style={styles.registerLink}>
-          Нямаш профил? Създай нов
-        </Text>
+      <Pressable onPress={() => router.push('/register')}>
+        <Text>Нямаш профил? Регистрация</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F6F8FC',
-    padding: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#0A2540',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#4A5D73',
-    marginBottom: 28,
-  },
+  container: { flex: 1, justifyContent: 'center', padding: 24 },
+  dark: { backgroundColor: '#0B1B2B' },
+  title: { fontSize: 28, marginBottom: 20 },
   input: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    fontSize: 16,
-    marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#E1E6EF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
   },
-  loginButton: {
+  button: {
     backgroundColor: '#1E90FF',
-    paddingVertical: 16,
-    borderRadius: 32,
-    alignItems: 'center',
-    marginTop: 10,
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 8,
   },
-  loginText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  googleButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D0D7E2',
-    paddingVertical: 16,
-    borderRadius: 32,
-    alignItems: 'center',
+  google: {
+    backgroundColor: '#DB4437',
+    padding: 14,
+    borderRadius: 10,
     marginTop: 12,
   },
-  googleText: {
-    fontSize: 16,
-    color: '#0A2540',
-  },
-  registerLink: {
-    textAlign: 'center',
-    marginTop: 24,
-    color: '#1E90FF',
-    fontSize: 15,
-  },
+  buttonText: { color: '#fff', textAlign: 'center' },
+  switch: { textAlign: 'center', marginBottom: 20 },
 });
