@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import AppHeader from '../components/AppHeader';
-import { translateAuthError } from '../lib/authErrors';
-import { supabase } from '../lib/supabase';
-import { useTheme } from '../lib/theme';
+import AppHeader from '../../components/AppHeader';
+import { translateAuthError } from '../../lib/authErrors';
+import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../lib/theme';
 
 export default function Login() {
   const { theme } = useTheme();
