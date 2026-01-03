@@ -18,7 +18,9 @@ export default function AppLayout() {
       }
     );
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) return null;
@@ -27,5 +29,11 @@ export default function AppLayout() {
     return <Redirect href="/login" />;
   }
 
-  return <Stack />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false, // 🔥 ТОВА Е КЛЮЧОВОТО
+      }}
+    />
+  );
 }
