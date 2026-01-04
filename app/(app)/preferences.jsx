@@ -65,9 +65,19 @@ export default function Preferences() {
       <AppHeader title="Предпочитания" />
 
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={[styles.subtitle, { color: theme.muted }]}>
-          Настрой маршрута според времето, интересите и темпото си
-        </Text>
+       <Text
+  style={[
+    styles.subtitle,
+    {
+      color: theme.muted,
+      textAlign: 'center',
+      fontStyle: 'italic',
+    },
+  ]}
+>
+  Настрой маршрута според времето, интересите и темпото си
+</Text>
+ 
 
         {/* TIME */}
         <Section title="⏱ Свободно време" theme={theme}>
