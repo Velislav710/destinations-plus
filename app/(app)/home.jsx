@@ -1,12 +1,36 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+
+import AppHeader from '../../components/AppHeader';
 import { getCurrentLocation } from '../../lib/location';
+import { useTheme } from '../../lib/theme';
+
+const DARK_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#0B1220' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#CBD5E1' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0B1220' }] },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#020617' }],
+  },
+];
 
 export default function Home() {
   const router = useRouter();
+  const { theme, mode } = useTheme();
+
   const [location, setLocation] = useState(null);
+  const [destination, setDestination] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -27,25 +51,32 @@ export default function Home() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: theme.bg }]}>
         <ActivityIndicator size="large" color="#1E90FF" />
-        <Text style={styles.loadingText}>Определяне на локация…</Text>
+        <Text style={{ marginTop: 12, color: theme.text }}>
+          Определяне на локация…
+        </Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={[styles.center, { backgroundColor: theme.bg }]}>
+        <Text style={{ color: 'red' }}>{error}</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1 }}>
+      {/* HEADER (СЪЩИЯ КАТО AUTH) */}
+      <AppHeader title="Начало" />
+
+      {/* MAP */}
       <MapView
-        style={StyleSheet.absoluteFillObject}
+        style={{ flex: 1 }}
+        customMapStyle={mode === 'dark' ? DARK_MAP_STYLE : []}
         initialRegion={{
           latitude: location.latitude,
           longitude: location.longitude,
@@ -60,14 +91,24 @@ export default function Home() {
         />
       </MapView>
 
-      {/* Горен бар */}
-      <View style={styles.header}>
-        <Text style={styles.title}>ДестинацииПлюс</Text>
+      {/* DESTINATION INPUT */}
+      <View style={[styles.searchBox, { backgroundColor: theme.card }]}>
+        <TextInput
+          placeholder="Въведи дестинация (по избор)"
+          placeholderTextColor="#999"
+          value={destination}
+          onChangeText={setDestination}
+          style={[styles.input, { color: theme.text }]}
+        />
       </View>
 
-      {/* Floating бутон */}
+      {/* BUTTON */}
       <Pressable
-        style={styles.planButton}
+        disabled={!location}
+        style={[
+          styles.planButton,
+          { opacity: location ? 1 : 0.5 },
+        ]}
         onPress={() => router.push('/preferences')}
       >
         <Text style={styles.planText}>Планирай маршрут</Text>
@@ -75,44 +116,32 @@ export default function Home() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#444',
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
-  },
-  header: {
+  searchBox: {
     position: 'absolute',
-    top: 50,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 20,
+    top: 100,
+    left: 20,
+    right: 20,
+    borderRadius: 16,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
+    elevation: 4,
   },
-  title: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  input: {
+    fontSize: 16,
   },
   planButton: {
     position: 'absolute',
     bottom: 40,
     alignSelf: 'center',
     backgroundColor: '#1E90FF',
-    paddingHorizontal: 32,
+    paddingHorizontal: 36,
     paddingVertical: 16,
     borderRadius: 32,
     elevation: 4,
