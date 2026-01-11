@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { fetchPlaces } from '../../lib/places';
 
 import AppHeader from '../../components/AppHeader';
 import { useTheme } from '../../lib/theme';
@@ -46,19 +47,29 @@ export default function Preferences() {
     );
   };
 
-  const handleGenerate = () => {
-    const payload = {
-      available_time_minutes: hours * 60,
-      interests,
-      pace,
-      budget,
-      transport,
-    };
-
-    console.log('PREFERENCES →', payload);
-
-    router.push('/route-result');
+const handleGenerate = async () => {
+  const payload = {
+    available_time_minutes: hours * 60,
+    interests,
+    pace,
+    budget,
+    transport,
   };
+
+  try {
+    const places = await fetchPlaces({ interests });
+    console.log('PLACES FROM DB →', places);
+
+    router.push({
+      pathname: '/route-result',
+      params: {
+        places: JSON.stringify(places),
+      },
+    });
+  } catch (e) {
+    alert(e.message);
+  }
+};
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
