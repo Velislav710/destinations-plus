@@ -1,319 +1,137 @@
-import Slider from '@react-native-community/slider';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { fetchPlaces } from '../../lib/places';
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import AppHeader from "../../components/AppHeader";
+import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/theme";
 
-import AppHeader from '../../components/AppHeader';
-import { useTheme } from '../../lib/theme';
-
-const INTERESTS = [
-  { key: 'history', label: '🏛 История' },
-  { key: 'nature', label: '🌳 Природа' },
-  { key: 'museum', label: '🖼 Музеи' },
-  { key: 'architecture', label: '🏙 Архитектура' },
-  { key: 'food', label: '🍽 Храна' },
-  { key: 'photo', label: '📸 Фото места' },
+const CATEGORIES = [
+  { id: "cultural", label: "Култура" },
+  { id: "historic", label: "История" },
+  { id: "architecture", label: "Архитектура" },
+  { id: "nature", label: "Природа" },
+  { id: "food", label: "Храна" },
+  { id: "shopping", label: "Пазаруване" },
 ];
+
+const RADII = [1000, 3000, 5000, 10000];
 
 export default function Preferences() {
   const { theme } = useTheme();
 
-  const [hours, setHours] = useState(5);
-  const [interests, setInterests] = useState([]);
-  const [pace, setPace] = useState('balanced');
-  const [budget, setBudget] = useState('medium');
-  const [transport, setTransport] = useState(['walk']);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [radius, setRadius] = useState(5000);
+  const [loading, setLoading] = useState(true);
 
-  const toggleInterest = (key) => {
-    setInterests((prev) =>
-      prev.includes(key)
-        ? prev.filter((i) => i !== key)
-        : [...prev, key]
-    );
-  };
+  useEffect(() => {
+    loadPreferences();
+  }, []);
 
-  const toggleTransport = (key) => {
-    setTransport((prev) =>
-      prev.includes(key)
-        ? prev.filter((t) => t !== key)
-        : [...prev, key]
-    );
-  };
+  async function loadPreferences() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-const handleGenerate = async () => {
-  const payload = {
-    available_time_minutes: hours * 60,
-    interests,
-    pace,
-    budget,
-    transport,
-  };
+    if (!user) return;
 
-  try {
-    const places = await fetchPlaces({ interests });
-    console.log('PLACES FROM DB →', places);
+    const { data } = await supabase
+      .from("preferences")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    router.push({
-      pathname: '/route-result',
-      params: {
-        places: JSON.stringify(places),
-      },
-    });
-  } catch (e) {
-    alert(e.message);
+    if (data) {
+      setSelectedCategories(data.categories);
+      setRadius(data.radius);
+    }
+
+    setLoading(false);
   }
-};
+
+  function toggleCategory(id) {
+    setSelectedCategories((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+  }
+
+  async function savePreferences() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    await supabase.from("preferences").upsert({
+      user_id: user.id,
+      categories: selectedCategories,
+      radius,
+    });
+
+    alert("Предпочитанията са запазени ✅");
+  }
+
+  if (loading) return null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <AppHeader title="Предпочитания" />
 
-      <ScrollView contentContainerStyle={styles.container}>
-       <Text
-  style={[
-    styles.subtitle,
-    {
-      color: theme.muted,
-      textAlign: 'center',
-      fontStyle: 'italic',
-    },
-  ]}
->
-  Настрой маршрута според времето, интересите и темпото си
-</Text>
- 
+      <Text style={[styles.section, { color: theme.text }]}>Категории</Text>
 
-        {/* TIME */}
-        <Section title="⏱ Свободно време" theme={theme}>
-          <Text style={[styles.value, { color: theme.text }]}>
-            {hours} часа
-          </Text>
-          <Slider
-            minimumValue={1}
-            maximumValue={10}
-            step={1}
-            value={hours}
-            onValueChange={setHours}
-            minimumTrackTintColor="#1E90FF"
-            maximumTrackTintColor="#CBD5E1"
-          />
-        </Section>
-
-        {/* INTERESTS */}
-        <Section title="🎯 Интереси" theme={theme}>
-          <View style={styles.chips}>
-            {INTERESTS.map((item) => (
-              <Pressable
-                key={item.key}
-                onPress={() => toggleInterest(item.key)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: interests.includes(item.key)
-                      ? '#1E90FF'
-                      : 'transparent',
-                    borderColor: interests.includes(item.key)
-                      ? '#1E90FF'
-                      : theme.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: interests.includes(item.key)
-                      ? '#fff'
-                      : theme.text,
-                  }}
-                >
-                  {item.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </Section>
-
-        {/* PACE */}
-        <Section title="⚡ Темпо" theme={theme}>
-          <Segmented
-            options={[
-              { key: 'fast', label: 'Бързо' },
-              { key: 'balanced', label: 'Балансирано' },
-              { key: 'slow', label: 'Спокойно' },
-            ]}
-            value={pace}
-            onChange={setPace}
-            theme={theme}
-          />
-        </Section>
-
-        {/* BUDGET */}
-        <Section title="💸 Бюджет" theme={theme}>
-          <Segmented
-            options={[
-              { key: 'low', label: 'Нисък' },
-              { key: 'medium', label: 'Среден' },
-              { key: 'high', label: 'Висок' },
-            ]}
-            value={budget}
-            onChange={setBudget}
-            theme={theme}
-          />
-        </Section>
-
-        {/* TRANSPORT */}
-        <Section title="🚶 Транспорт" theme={theme}>
-          <View style={styles.chips}>
-            {[
-              { key: 'walk', label: '🚶 Пеш' },
-              { key: 'public', label: '🚇 Градски' },
-              { key: 'bike', label: '🚲 Велосипед' },
-              { key: 'car', label: '🚗 Кола' },
-            ].map((t) => (
-              <Pressable
-                key={t.key}
-                onPress={() => toggleTransport(t.key)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: transport.includes(t.key)
-                      ? '#1E90FF'
-                      : 'transparent',
-                    borderColor: transport.includes(t.key)
-                      ? '#1E90FF'
-                      : theme.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: transport.includes(t.key)
-                      ? '#fff'
-                      : theme.text,
-                  }}
-                >
-                  {t.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </Section>
-
-        {/* BUTTON */}
-        <Pressable style={styles.button} onPress={handleGenerate}>
-          <Text style={styles.buttonText}>Генерирай маршрут</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
-  );
-}
-
-/* ---------- COMPONENTS ---------- */
-
-function Section({ title, children, theme }) {
-  return (
-    <View style={[styles.section, { backgroundColor: theme.card }]}>
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function Segmented({ options, value, onChange, theme }) {
-  return (
-    <View
-      style={[
-        styles.segmented,
-        { backgroundColor: theme.border },
-      ]}
-    >
-      {options.map((o) => (
+      {CATEGORIES.map((cat) => (
         <Pressable
-          key={o.key}
-          onPress={() => onChange(o.key)}
+          key={cat.id}
+          onPress={() => toggleCategory(cat.id)}
           style={[
-            styles.segment,
-            value === o.key && { backgroundColor: '#1E90FF' },
+            styles.option,
+            {
+              backgroundColor: selectedCategories.includes(cat.id)
+                ? "#1E90FF"
+                : theme.card,
+            },
           ]}
         >
-          <Text
-            style={{
-              color: value === o.key ? '#fff' : theme.text,
-              fontWeight: '500',
-            }}
-          >
-            {o.label}
-          </Text>
+          <Text style={{ color: theme.text }}>{cat.label}</Text>
         </Pressable>
       ))}
+
+      <Text style={[styles.section, { color: theme.text }]}>Радиус</Text>
+
+      {RADII.map((r) => (
+        <Pressable
+          key={r}
+          onPress={() => setRadius(r)}
+          style={[
+            styles.option,
+            {
+              backgroundColor: radius === r ? "#1E90FF" : theme.card,
+            },
+          ]}
+        >
+          <Text style={{ color: theme.text }}>{r / 1000} км</Text>
+        </Pressable>
+      ))}
+
+      <Pressable style={styles.saveButton} onPress={savePreferences}>
+        <Text style={styles.saveText}>Запази</Text>
+      </Pressable>
     </View>
   );
 }
 
-/* ---------- STYLES ---------- */
-
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    paddingBottom: 40,
+  container: { flex: 1, padding: 20 },
+  section: { fontSize: 18, marginVertical: 12 },
+  option: {
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 8,
   },
-  subtitle: {
-    marginVertical: 12,
-    fontSize: 15,
-  },
-  section: {
-    borderRadius: 18,
+  saveButton: {
+    marginTop: 24,
+    backgroundColor: "#1E90FF",
     padding: 16,
-    marginTop: 18,
+    borderRadius: 24,
+    alignItems: "center",
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  value: {
-    fontSize: 16,
-    marginBottom: 6,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  chip: {
-    borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-  },
-  segmented: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  button: {
-    marginTop: 32,
-    backgroundColor: '#1E90FF',
-    paddingVertical: 16,
-    borderRadius: 30,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
+  saveText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });

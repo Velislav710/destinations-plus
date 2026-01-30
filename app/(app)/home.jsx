@@ -1,10 +1,11 @@
 import { useRouter } from "expo-router";
+import { Alert } from "react-native";
+import { getPreferences } from "../../lib/services/preferencesService";
 import { generateSmartRoute } from "../../lib/services/routeService";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -39,22 +40,20 @@ const DARK_MAP_STYLE = [
  * ===============================
  */
 export default function Home() {
+  const SAFE_PREFERENCES = {
+    categories: ["cultural", "historic", "architecture"],
+    radius: 5000,
+  };
+
   const router = useRouter();
   const { theme, mode } = useTheme();
 
   /**
    * ===============================
    * SAFE DEFAULT PREFERENCES
-   * (🔥 ключово за да НЕ крашва)
    * ===============================
    */
-  const preferences = useMemo(
-    () => ({
-      categories: ["cultural", "historic", "architecture"],
-      radius: 5000,
-    }),
-    [],
-  );
+  const [preferences, setPreferences] = useState(SAFE_PREFERENCES);
 
   /**
    * ===============================
@@ -72,33 +71,23 @@ export default function Home() {
    * LOAD LOCATION
    * ===============================
    */
-  useEffect(() => {
-    let mounted = true;
 
-    async function loadLocation() {
+  useEffect(() => {
+    async function load() {
       try {
         const loc = await getCurrentLocation();
-
-        if (!mounted) return;
-
-        if (!loc?.latitude || !loc?.longitude) {
-          throw new Error("Невалидна локация");
-        }
+        const prefs = await getPreferences();
 
         setLocation(loc);
-      } catch (err) {
-        console.error("LOCATION ERROR →", err);
-        if (mounted) setError(err.message);
+        setPreferences(prefs);
+      } catch (e) {
+        setError(e.message);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     }
 
-    loadLocation();
-
-    return () => {
-      mounted = false;
-    };
+    load();
   }, []);
 
   /**
@@ -124,6 +113,48 @@ export default function Home() {
         location,
         preferences,
       });
+
+      async function handlePlanRoute() {
+        if (!location) return;
+
+        if (
+          !preferences?.categories ||
+          SAFE_PREFERENCES.categories.length === 0
+        ) {
+          Alert.alert(
+            "Няма избрани предпочитания",
+            "Моля, избери поне една категория, за да можем да планираме маршрут.",
+          );
+          return;
+        }
+
+        try {
+          console.log("PLANNING WITH →", { location, preferences });
+
+          const result = await generateSmartRoute({
+            location,
+            preferences,
+          });
+
+          if (!result?.route || result.route.length === 0) {
+            Alert.alert(
+              "Няма резултати",
+              "Не намерихме подходящи места. Опитай с по-голям радиус.",
+            );
+            return;
+          }
+
+          router.push({
+            pathname: "/route",
+            params: {
+              route: JSON.stringify(result.route),
+            },
+          });
+        } catch (e) {
+          console.error("ROUTE ERROR →", e);
+          Alert.alert("Грешка", "Възникна проблем при планиране на маршрута.");
+        }
+      }
 
       const result = await generateSmartRoute({
         location,
@@ -205,6 +236,14 @@ export default function Home() {
         />
       </MapView>
 
+      {/* PREFERENCES INFO */}
+      <View style={[styles.prefInfo, { backgroundColor: theme.card }]}>
+        <Text style={[styles.prefText, { color: theme.text }]}>
+          🧭 Търсим: {SAFE_PREFERENCES.categories.join(" • ")} ·{" "}
+          {SAFE_PREFERENCES.radius / 1000} км
+        </Text>
+      </View>
+
       <View style={[styles.searchBox, { backgroundColor: theme.card }]}>
         <TextInput
           placeholder="Въведи дестинация (по избор)"
@@ -269,5 +308,18 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  prefInfo: {
+    position: "absolute",
+    bottom: 120,
+    alignSelf: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    elevation: 3,
+  },
+  prefText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
