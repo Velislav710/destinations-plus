@@ -1,8 +1,4 @@
 import { useRouter } from "expo-router";
-import { Alert } from "react-native";
-import { getPreferences } from "../../lib/services/preferencesService";
-import { generateSmartRoute } from "../../lib/services/routeService";
-
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,11 +14,6 @@ import AppHeader from "../../components/AppHeader";
 import { getCurrentLocation } from "../../lib/location";
 import { useTheme } from "../../lib/theme";
 
-/**
- * ===============================
- * MAP STYLING
- * ===============================
- */
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#0B1220" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#CBD5E1" }] },
@@ -34,158 +25,59 @@ const DARK_MAP_STYLE = [
   },
 ];
 
-/**
- * ===============================
- * HOME SCREEN
- * ===============================
- */
 export default function Home() {
-  const SAFE_PREFERENCES = {
-    categories: ["cultural", "historic", "architecture"],
-    radius: 5000,
-  };
-
   const router = useRouter();
   const { theme, mode } = useTheme();
 
-  /**
-   * ===============================
-   * SAFE DEFAULT PREFERENCES
-   * ===============================
-   */
-  const [preferences, setPreferences] = useState(SAFE_PREFERENCES);
-
-  /**
-   * ===============================
-   * STATE
-   * ===============================
-   */
   const [location, setLocation] = useState(null);
   const [destination, setDestination] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [planning, setPlanning] = useState(false);
 
-  /**
-   * ===============================
-   * LOAD LOCATION
-   * ===============================
-   */
-
+  // =========================
+  // LOAD LOCATION (SAFE)
+  // =========================
   useEffect(() => {
-    async function load() {
+    let mounted = true;
+
+    async function loadLocation() {
       try {
         const loc = await getCurrentLocation();
-        const prefs = await getPreferences();
-
-        setLocation(loc);
-        setPreferences(prefs);
-      } catch (e) {
-        setError(e.message);
+        if (mounted) {
+          setLocation(loc);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError("Неуспешно взимане на локация");
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
-    load();
+    loadLocation();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  /**
-   * ===============================
-   * PLAN ROUTE
-   * ===============================
-   */
-  async function handlePlanRoute() {
-    if (!location) {
-      Alert.alert("Грешка", "Няма текуща локация");
-      return;
-    }
+  // =========================
+  // PLAN ROUTE (NO LOGIC YET)
+  // =========================
+  function handlePlanRoute() {
+    if (!location) return;
 
-    if (!preferences?.categories?.length) {
-      Alert.alert("Грешка", "Липсват предпочитания");
-      return;
-    }
-
-    setPlanning(true);
-
-    try {
-      console.log("PLANNING WITH →", {
-        location,
-        preferences,
-      });
-
-      async function handlePlanRoute() {
-        if (!location) return;
-
-        if (
-          !preferences?.categories ||
-          SAFE_PREFERENCES.categories.length === 0
-        ) {
-          Alert.alert(
-            "Няма избрани предпочитания",
-            "Моля, избери поне една категория, за да можем да планираме маршрут.",
-          );
-          return;
-        }
-
-        try {
-          console.log("PLANNING WITH →", { location, preferences });
-
-          const result = await generateSmartRoute({
-            location,
-            preferences,
-          });
-
-          if (!result?.route || result.route.length === 0) {
-            Alert.alert(
-              "Няма резултати",
-              "Не намерихме подходящи места. Опитай с по-голям радиус.",
-            );
-            return;
-          }
-
-          router.push({
-            pathname: "/route",
-            params: {
-              route: JSON.stringify(result.route),
-            },
-          });
-        } catch (e) {
-          console.error("ROUTE ERROR →", e);
-          Alert.alert("Грешка", "Възникна проблем при планиране на маршрута.");
-        }
-      }
-
-      const result = await generateSmartRoute({
-        location,
-        preferences,
-      });
-
-      console.log("ROUTE RESULT →", result);
-
-      if (!result || !Array.isArray(result.route)) {
-        throw new Error("Невалиден маршрут");
-      }
-
-      router.push({
-        pathname: "/route",
-        params: {
-          route: JSON.stringify(result.route),
-        },
-      });
-    } catch (e) {
-      console.error("ROUTE ERROR →", e);
-      Alert.alert("Грешка", "Не успяхме да създадем маршрут. Опитай отново.");
-    } finally {
-      setPlanning(false);
-    }
+    // ❗ НИКАКВА логика тук
+    // ❗ Само навигация
+    router.push("/preferences");
   }
 
-  /**
-   * ===============================
-   * LOADING STATE
-   * ===============================
-   */
+  // =========================
+  // STATES
+  // =========================
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.bg }]}>
@@ -197,24 +89,25 @@ export default function Home() {
     );
   }
 
-  /**
-   * ===============================
-   * ERROR STATE
-   * ===============================
-   */
   if (error) {
     return (
       <View style={[styles.center, { backgroundColor: theme.bg }]}>
-        <Text style={{ color: "red", textAlign: "center" }}>{error}</Text>
+        <Text style={{ color: "red" }}>{error}</Text>
       </View>
     );
   }
 
-  /**
-   * ===============================
-   * MAIN UI
-   * ===============================
-   */
+  if (!location) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.bg }]}>
+        <Text style={{ color: theme.text }}>Няма налична локация</Text>
+      </View>
+    );
+  }
+
+  // =========================
+  // UI
+  // =========================
   return (
     <View style={{ flex: 1 }}>
       <AppHeader title="Начало" />
@@ -230,19 +123,13 @@ export default function Home() {
         }}
       >
         <Marker
-          coordinate={location}
+          coordinate={{
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }}
           title="Ти си тук"
-          description="Начална точка"
         />
       </MapView>
-
-      {/* PREFERENCES INFO */}
-      <View style={[styles.prefInfo, { backgroundColor: theme.card }]}>
-        <Text style={[styles.prefText, { color: theme.text }]}>
-          🧭 Търсим: {SAFE_PREFERENCES.categories.join(" • ")} ·{" "}
-          {SAFE_PREFERENCES.radius / 1000} км
-        </Text>
-      </View>
 
       <View style={[styles.searchBox, { backgroundColor: theme.card }]}>
         <TextInput
@@ -255,26 +142,19 @@ export default function Home() {
       </View>
 
       <Pressable
-        disabled={!location || planning}
-        style={[
-          styles.planButton,
-          { opacity: location && !planning ? 1 : 0.5 },
-        ]}
+        disabled={!location}
+        style={[styles.planButton, { opacity: location ? 1 : 0.5 }]}
         onPress={handlePlanRoute}
       >
-        <Text style={styles.planText}>
-          {planning ? "Планиране…" : "Планирай маршрут"}
-        </Text>
+        <Text style={styles.planText}>Планирай маршрут</Text>
       </Pressable>
     </View>
   );
 }
 
-/**
- * ===============================
- * STYLES
- * ===============================
- */
+// =========================
+// STYLES
+// =========================
 const styles = StyleSheet.create({
   center: {
     flex: 1,
@@ -308,18 +188,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-  },
-  prefInfo: {
-    position: "absolute",
-    bottom: 120,
-    alignSelf: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    elevation: 3,
-  },
-  prefText: {
-    fontSize: 14,
-    fontWeight: "500",
   },
 });
