@@ -34,50 +34,32 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // =========================
-  // LOAD LOCATION (SAFE)
-  // =========================
   useEffect(() => {
-    let mounted = true;
-
     async function loadLocation() {
       try {
         const loc = await getCurrentLocation();
-        if (mounted) {
-          setLocation(loc);
-        }
+        setLocation(loc);
       } catch (err) {
-        if (mounted) {
-          setError("Неуспешно взимане на локация");
-        }
+        setError(err.message);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     }
 
     loadLocation();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
 
-  // =========================
-  // PLAN ROUTE (NO LOGIC YET)
-  // =========================
-  function handlePlanRoute() {
+  function handlePlanPress() {
     if (!location) return;
 
-    // ❗ НИКАКВА логика тук
-    // ❗ Само навигация
-    router.push("/preferences");
+    router.push({
+      pathname: "/preferences",
+      params: {
+        location: JSON.stringify(location),
+      },
+    });
   }
 
-  // =========================
-  // STATES
-  // =========================
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.bg }]}>
@@ -97,17 +79,6 @@ export default function Home() {
     );
   }
 
-  if (!location) {
-    return (
-      <View style={[styles.center, { backgroundColor: theme.bg }]}>
-        <Text style={{ color: theme.text }}>Няма налична локация</Text>
-      </View>
-    );
-  }
-
-  // =========================
-  // UI
-  // =========================
   return (
     <View style={{ flex: 1 }}>
       <AppHeader title="Начало" />
@@ -122,18 +93,12 @@ export default function Home() {
           longitudeDelta: 0.02,
         }}
       >
-        <Marker
-          coordinate={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-          }}
-          title="Ти си тук"
-        />
+        <Marker coordinate={location} title="Ти си тук" />
       </MapView>
 
       <View style={[styles.searchBox, { backgroundColor: theme.card }]}>
         <TextInput
-          placeholder="Въведи дестинация (по избор)"
+          placeholder="Дестинация (по избор)"
           placeholderTextColor="#999"
           value={destination}
           onChangeText={setDestination}
@@ -141,20 +106,13 @@ export default function Home() {
         />
       </View>
 
-      <Pressable
-        disabled={!location}
-        style={[styles.planButton, { opacity: location ? 1 : 0.5 }]}
-        onPress={handlePlanRoute}
-      >
+      <Pressable style={styles.planButton} onPress={handlePlanPress}>
         <Text style={styles.planText}>Планирай маршрут</Text>
       </Pressable>
     </View>
   );
 }
 
-// =========================
-// STYLES
-// =========================
 const styles = StyleSheet.create({
   center: {
     flex: 1,
@@ -167,8 +125,7 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    padding: 14,
     elevation: 4,
   },
   input: {
