@@ -1,8 +1,6 @@
-import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,104 +8,81 @@ import {
 } from "react-native";
 
 import AppHeader from "../../components/AppHeader";
-import { getCurrentLocation } from "../../lib/location";
 import { generateSmartRoute } from "../../lib/services/routeService";
+
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 
 export default function RouteScreen() {
-  const router = useRouter();
   const { theme } = useTheme();
-
-  const [preferences, setPreferences] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [route, setRoute] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [route, setRoute] = useState(null);
 
-  /* ===============================
-     LOAD LOCATION + PREFERENCES
-  =============================== */
   useEffect(() => {
-    async function loadInitialData() {
-      try {
-        // 1. Location
-        const loc = await getCurrentLocation();
-        setLocation(loc);
-
-        // 2. Preferences
-        const { data, error } = await supabase
-          .from("user_preferences")
-          .select("*")
-          .single();
-
-        if (error || !data) {
-          setPreferences(null);
-        } else {
-          setPreferences(data);
-        }
-      } catch (e) {
-        setError("Грешка при зареждане на данни.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadInitialData();
-  }, []);
-
-  /* ===============================
-     PLAN ROUTE (ONLY IF READY)
-  =============================== */
-  useEffect(() => {
-    if (!location || !preferences || !preferences.categories?.length) return;
-
     async function planRoute() {
       try {
+        setLoading(true);
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          throw new Error("Няма логнат потребител");
+        }
+
+        const { data: preferences } = await supabase
+          .from("user_preferences")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!preferences) {
+          throw new Error("Липсват предпочитания");
+        }
+
+        const { data: locationRow } = await supabase
+          .from("user_locations")
+          .select("latitude, longitude")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!locationRow) {
+          throw new Error("Липсва локация");
+        }
+
         const result = await generateSmartRoute({
-          location,
+          location: {
+            latitude: locationRow.latitude,
+            longitude: locationRow.longitude,
+          },
           preferences,
         });
 
         setRoute(result);
       } catch (e) {
-        setError("Грешка при планиране на маршрута.");
-        console.error("ROUTE ERROR →", e);
+        setError(e.message);
+      } finally {
+        setLoading(false);
       }
     }
 
     planRoute();
-  }, [location, preferences]);
-
-  /* ===============================
-     UI STATES
-  =============================== */
+  }, []);
 
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.bg }]}>
         <ActivityIndicator size="large" color="#1E90FF" />
-        <Text style={{ marginTop: 12, color: theme.text }}>
-          Планираме маршрута ти…
+        <Text style={{ color: theme.text, marginTop: 12 }}>
+          Генериране на маршрут…
         </Text>
-      </View>
-    );
-  }
-
-  if (!preferences || !preferences.categories?.length) {
-    return (
-      <View style={[styles.center, { backgroundColor: theme.bg }]}>
-        <Text style={[styles.errorText]}>
-          Липсват предпочитания. Моля, попълни ги.
-        </Text>
-
-        <Pressable
-          style={styles.button}
-          onPress={() => router.replace("/preferences")}
-        >
-          <Text style={styles.buttonText}>Попълни предпочитания</Text>
-        </Pressable>
       </View>
     );
   }
@@ -115,47 +90,20 @@ export default function RouteScreen() {
   if (error) {
     return (
       <View style={[styles.center, { backgroundColor: theme.bg }]}>
-        <Text style={[styles.errorText]}>{error}</Text>
+        <Text style={{ color: "red" }}>{error}</Text>
       </View>
     );
   }
 
-  if (!route) {
-    return (
-      <View style={[styles.center, { backgroundColor: theme.bg }]}>
-        <Text style={{ color: theme.text }}>
-          Изчисляваме оптималния маршрут…
-        </Text>
-      </View>
-    );
-  }
-
-  /* ===============================
-     SUCCESS VIEW
-  =============================== */
   return (
-    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+    <View style={{ flex: 1 }}>
       <AppHeader title="Твоят маршрут" />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Програма
-        </Text>
-
-        {route.days?.map((day, index) => (
-          <View
-            key={index}
-            style={[styles.dayCard, { backgroundColor: theme.card }]}
-          >
-            <Text style={[styles.dayTitle, { color: theme.text }]}>
-              Ден {index + 1}
-            </Text>
-
-            {day.places.map((place, i) => (
-              <Text key={i} style={{ color: theme.text }}>
-                • {place.name}
-              </Text>
-            ))}
+      <ScrollView style={{ padding: 16 }}>
+        {route?.days?.map((day, index) => (
+          <View key={index} style={styles.dayCard}>
+            <Text style={styles.dayTitle}>Ден {index + 1}</Text>
+            <Text style={styles.dayText}>{day.description}</Text>
           </View>
         ))}
       </ScrollView>
@@ -163,50 +111,26 @@ export default function RouteScreen() {
   );
 }
 
-/* ===============================
-   STYLES
-=============================== */
 const styles = StyleSheet.create({
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
-  },
-  content: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 16,
   },
   dayCard: {
+    backgroundColor: "#1E293B",
     padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    elevation: 3,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   dayTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
+    fontWeight: "700",
+    color: "#38BDF8",
+    marginBottom: 6,
   },
-  errorText: {
-    color: "red",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: "#1E90FF",
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 28,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+  dayText: {
+    color: "#E5E7EB",
+    fontSize: 15,
   },
 });

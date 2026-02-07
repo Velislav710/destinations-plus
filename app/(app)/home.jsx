@@ -5,24 +5,19 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 import AppHeader from "../../components/AppHeader";
 import { getCurrentLocation } from "../../lib/location";
+import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#0B1220" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#CBD5E1" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#0B1220" }] },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#020617" }],
-  },
 ];
 
 export default function Home() {
@@ -30,15 +25,30 @@ export default function Home() {
   const { theme, mode } = useTheme();
 
   const [location, setLocation] = useState(null);
-  const [destination, setDestination] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     async function loadLocation() {
       try {
+        setLoading(true);
+
         const loc = await getCurrentLocation();
         setLocation(loc);
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          throw new Error("Няма логнат потребител");
+        }
+
+        await supabase.from("user_locations").insert({
+          user_id: user.id,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        });
       } catch (err) {
         setError(err.message);
       } finally {
@@ -49,15 +59,8 @@ export default function Home() {
     loadLocation();
   }, []);
 
-  function handlePlanPress() {
-    if (!location) return;
-
-    router.push({
-      pathname: "/preferences",
-      params: {
-        location: JSON.stringify(location),
-      },
-    });
+  function goToPreferences() {
+    router.push("/preferences");
   }
 
   if (loading) {
@@ -93,20 +96,14 @@ export default function Home() {
           longitudeDelta: 0.02,
         }}
       >
-        <Marker coordinate={location} title="Ти си тук" />
+        <Marker
+          coordinate={location}
+          title="Ти си тук"
+          description="Начална точка"
+        />
       </MapView>
 
-      <View style={[styles.searchBox, { backgroundColor: theme.card }]}>
-        <TextInput
-          placeholder="Дестинация (по избор)"
-          placeholderTextColor="#999"
-          value={destination}
-          onChangeText={setDestination}
-          style={[styles.input, { color: theme.text }]}
-        />
-      </View>
-
-      <Pressable style={styles.planButton} onPress={handlePlanPress}>
+      <Pressable style={styles.planButton} onPress={goToPreferences}>
         <Text style={styles.planText}>Планирай маршрут</Text>
       </Pressable>
     </View>
@@ -118,18 +115,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  searchBox: {
-    position: "absolute",
-    top: 100,
-    left: 20,
-    right: 20,
-    borderRadius: 16,
-    padding: 14,
-    elevation: 4,
-  },
-  input: {
-    fontSize: 16,
   },
   planButton: {
     position: "absolute",
