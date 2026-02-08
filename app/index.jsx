@@ -1,9 +1,14 @@
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import {
+  ImageBackground,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-
-import landingImage from '../assets/images/landing.jpg';
+import landingImage from "../assets/images/landing.jpg";
 
 export default function Landing() {
   const router = useRouter();
@@ -15,25 +20,29 @@ export default function Landing() {
     >
       <StatusBar style="light" />
 
-      {/* Тъмен overlay за контраст */}
       <View style={styles.overlay}>
         <Text style={styles.logo}>
-          Дестинации{'\n'}
+          Дестинации{"\n"}
           <Text style={styles.logoAccent}>Плюс</Text>
         </Text>
 
         <Text style={styles.subtitle}>
-          Интелигентно планиране на маршрути, време и натовареност —
-          {'\n'}съобразено с трафик и твоите интереси.
+          Интелигентно планиране на маршрути, време и натовареност —{"\n"}
+          съобразено с трафик и твоите интереси.
         </Text>
 
         <View style={styles.buttons}>
-          <Pressable style={styles.primaryButton} onPress={() => router.push('/login')}>
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() => router.push("/login")}
+          >
             <Text style={styles.primaryText}>Вход</Text>
-            
           </Pressable>
 
-          <Pressable style={styles.secondaryButton} onPress={() => router.push('/register')}>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => router.push("/register")}
+          >
             <Text style={styles.secondaryText}>Създай профил</Text>
           </Pressable>
         </View>
@@ -48,53 +57,53 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(8, 24, 48, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(8, 24, 48, 0.75)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 24,
   },
   logo: {
     fontSize: 42,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
     lineHeight: 46,
   },
   logoAccent: {
-    color: '#4DA3FF',
+    color: "#4DA3FF",
   },
   subtitle: {
     fontSize: 16,
-    color: '#DCE7FF',
-    textAlign: 'center',
+    color: "#DCE7FF",
+    textAlign: "center",
     marginVertical: 32,
     maxWidth: 340,
     lineHeight: 22,
   },
   buttons: {
-    width: '100%',
+    width: "100%",
     gap: 16,
   },
   primaryButton: {
-    backgroundColor: '#1E90FF',
+    backgroundColor: "#1E90FF",
     paddingVertical: 16,
     borderRadius: 32,
-    alignItems: 'center',
+    alignItems: "center",
   },
   primaryText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
     paddingVertical: 16,
     borderRadius: 32,
-    alignItems: 'center',
+    alignItems: "center",
   },
   secondaryText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
   },
 });
