@@ -1,27 +1,19 @@
-import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-
-import AppHeader from "../../components/AppHeader";
-import { generateAIItinerary } from "../../lib/ai/openaiPlanner";
-import { getPlacesNearby } from "../../lib/apis/opentripmap";
 import { supabase } from "../../lib/supabase";
-import { useTheme } from "../../lib/theme";
+
+const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY;
 
 export default function RouteScreen() {
-  const router = useRouter();
-  const { theme } = useTheme();
-
   const [loading, setLoading] = useState(true);
+  const [places, setPlaces] = useState([]);
   const [error, setError] = useState(null);
-  const [program, setProgram] = useState(null);
 
   useEffect(() => {
     planRoute();
@@ -32,17 +24,16 @@ export default function RouteScreen() {
       setLoading(true);
       setError(null);
 
-      //Взимаме текущия потребител
+      // ===============================
+      // 1️⃣ ВЗИМАМЕ ПОСЛЕДНИ ПРЕДПОЧИТАНИЯ
+      // ===============================
+
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        throw new Error("Няма активен потребител");
-      }
+      if (!user) throw new Error("Няма логнат потребител.");
 
-      //Взимаме ПОСЛЕДНИТЕ предпочитания
       const { data: preferences, error: prefError } = await supabase
         .from("user_preferences")
         .select("*")
@@ -52,58 +43,68 @@ export default function RouteScreen() {
         .single();
 
       if (prefError || !preferences) {
-        throw new Error("Липсват предпочитания. Моля, попълни ги.");
+        throw new Error("Липсват предпочитания.");
       }
 
-      //Взимаме последната записана локация
-      const { data: locationRow, error: locationError } = await supabase
+      console.log("PREFERENCES →", preferences);
+
+      // ===============================
+      // 2️⃣ ВЗИМАМЕ ЛОКАЦИЯ
+      // ===============================
+
+      const { data: locationData } = await supabase
         .from("user_locations")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (locationError || !locationRow) {
-        throw new Error("Липсва локация");
+      console.log("LOCATION FROM DB →", locationData);
+
+      let lat = 42.6977; // София fallback
+      let lon = 23.3219;
+
+      if (locationData && locationData.lat && locationData.lon) {
+        const parsedLat = parseFloat(locationData.lat);
+        const parsedLon = parseFloat(locationData.lon);
+
+        if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+          lat = parsedLat;
+          lon = parsedLon;
+        }
       }
 
-      const location = {
-        lat: Number(locationRow.latitude),
-        lon: Number(locationRow.longitude),
-      };
+      console.log("FINAL LOCATION →", { lat, lon });
 
-      if (Number.isNaN(location.lat) || Number.isNaN(location.lon)) {
-        throw new Error("Невалидна локация (lat/lon)");
+      // ===============================
+      // 3️⃣ GOOGLE PLACES API CALL
+      // ===============================
+
+      const radius = preferences.radius || 5000;
+
+      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=${radius}&type=tourist_attraction&key=${GOOGLE_API_KEY}`;
+
+      console.log("GOOGLE URL →", url);
+
+      const response = await fetch(url);
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          `Google Places error: ${json.error_message || response.status}`,
+        );
       }
 
-      console.log("FINAL LOCATION →", location);
-      console.log("PREFERENCES →", preferences);
-
-      //OpenTripMap – взимаме реални места
-      const places = await getPlacesNearby({
-        lat: location.lat,
-        lon: location.lon,
-        radius: preferences.radius || 5000, // метри
-        categories: preferences.categories,
-        limit: 30,
-      });
-
-      if (!places || places.length === 0) {
-        throw new Error("Не бяха намерени забележителности");
+      if (!json.results) {
+        throw new Error("Google не върна резултати.");
       }
 
-      //OpenAI – генерираме програма
-      const aiProgram = await generateAIItinerary({
-        city: locationRow.city || "текущия град",
-        days: preferences.days,
-        preferences,
-        places,
-      });
+      console.log("GOOGLE RESULTS COUNT →", json.results.length);
 
-      setProgram(aiProgram);
+      setPlaces(json.results.slice(0, 10));
     } catch (err) {
-      console.error("ROUTE ERROR →", err);
+      console.log("ROUTE ERROR →", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -113,8 +114,8 @@ export default function RouteScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={{ marginTop: 12 }}>Генериране на маршрут...</Text>
+        <ActivityIndicator size="large" />
+        <Text>Генерирам маршрут...</Text>
       </View>
     );
   }
@@ -122,73 +123,48 @@ export default function RouteScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-
-        <Pressable
-          style={styles.button}
-          onPress={() => router.push("/preferences")}
-        >
-          <Text style={styles.buttonText}>Попълни предпочитания</Text>
-        </Pressable>
+        <Text style={{ color: "red" }}>{error}</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <AppHeader title="Твоята програма" />
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Твоят маршрут</Text>
 
-      <ScrollView contentContainerStyle={styles.container}>
-        {program?.days?.map((day, index) => (
-          <View key={index} style={styles.dayCard}>
-            <Text style={styles.dayTitle}>Ден {index + 1}</Text>
-            <Text style={styles.dayText}>{day}</Text>
-          </View>
-        ))}
-      </ScrollView>
-    </View>
+      {places.map((place, index) => (
+        <View key={index} style={styles.card}>
+          <Text style={styles.placeName}>{place.name}</Text>
+          <Text>⭐ {place.rating || "Няма рейтинг"}</Text>
+          <Text>{place.vicinity}</Text>
+        </View>
+      ))}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: 20,
   },
   center: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    alignItems: "center",
   },
-  errorText: {
-    color: "red",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 16,
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
   },
-  button: {
-    backgroundColor: "#000",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  dayCard: {
+  card: {
+    padding: 15,
+    borderRadius: 10,
     backgroundColor: "#f2f2f2",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 15,
   },
-  dayTitle: {
+  placeName: {
     fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  dayText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontWeight: "600",
   },
 });
