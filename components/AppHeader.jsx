@@ -1,40 +1,33 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../lib/theme';
+import { Text, View } from "react-native";
+import { useTheme } from "../lib/theme";
+import ThemeToggle from "./ThemeToggle";
 
 export default function AppHeader({ title }) {
-  const { toggleTheme, theme, mode } = useTheme();
+  const { theme } = useTheme();
 
   return (
-    <View style={[styles.header, { backgroundColor: theme.bg }]}>
-      <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+    <View
+      style={{
+        paddingTop: 50,
+        paddingBottom: 15,
+        paddingHorizontal: 20,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        backgroundColor: theme.card,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 18,
+          fontWeight: "bold",
+          color: theme.text,
+        }}
+      >
+        {title}
+      </Text>
 
-      <Pressable
-  onPress={toggleTheme}
-  style={{
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: theme.card,
-  }}
->
-  <Text style={{ fontSize: 18 }}>
-    {mode === 'dark' ? '☀️' : '🌙'}
-  </Text>
-</Pressable>
-
+      <ThemeToggle />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-  },
-});

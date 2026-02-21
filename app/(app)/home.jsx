@@ -1,134 +1,183 @@
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
-  StyleSheet,
+  ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 import AppHeader from "../../components/AppHeader";
-import { getCurrentLocation } from "../../lib/location";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 
-const DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#0B1220" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#CBD5E1" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0B1220" }] },
-];
+const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY;
 
 export default function Home() {
   const router = useRouter();
-  const { theme, mode } = useTheme();
+  const { theme } = useTheme();
 
-  const [location, setLocation] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [cityInput, setCityInput] = useState("");
+  const [region, setRegion] = useState(null);
 
-  useEffect(() => {
-    async function loadLocation() {
-      try {
-        setLoading(true);
+  async function saveLocation(lat, lon) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-        const loc = await getCurrentLocation();
-        setLocation(loc);
+    await supabase.from("user_locations").insert([
+      {
+        user_id: user.id,
+        latitude: lat,
+        longitude: lon,
+      },
+    ]);
+  }
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+  async function useCurrentLocation() {
+    try {
+      setLoading(true);
 
-        if (!user) {
-          throw new Error("Няма логнат потребител");
-        }
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-        await supabase.from("user_locations").insert({
-          user_id: user.id,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-        });
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (status !== "granted") {
+        Alert.alert("Грешка", "Няма достъп до локация");
+        return;
       }
+
+      const location = await Location.getCurrentPositionAsync({});
+
+      setRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      });
+
+      await saveLocation(location.coords.latitude, location.coords.longitude);
+
+      router.push("/preferences");
+    } catch (err) {
+      Alert.alert("Грешка", "Проблем с локацията");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function useCityInput() {
+    if (!cityInput.trim()) {
+      Alert.alert("Грешка", "Въведи град");
+      return;
     }
 
-    loadLocation();
-  }, []);
+    try {
+      setLoading(true);
 
-  function goToPreferences() {
-    router.push("/preferences");
-  }
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${cityInput}&key=${GOOGLE_KEY}`,
+      );
 
-  if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: theme.bg }]}>
-        <ActivityIndicator size="large" color="#1E90FF" />
-        <Text style={{ marginTop: 12, color: theme.text }}>
-          Определяне на локация…
-        </Text>
-      </View>
-    );
-  }
+      const data = await res.json();
 
-  if (error) {
-    return (
-      <View style={[styles.center, { backgroundColor: theme.bg }]}>
-        <Text style={{ color: "red" }}>{error}</Text>
-      </View>
-    );
+      if (!data.results.length) {
+        Alert.alert("Грешка", "Градът не е намерен");
+        return;
+      }
+
+      const loc = data.results[0].geometry.location;
+
+      setRegion({
+        latitude: loc.lat,
+        longitude: loc.lng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      });
+
+      await saveLocation(loc.lat, loc.lng);
+
+      router.push("/preferences");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <AppHeader title="Начало" />
 
-      <MapView
-        style={{ flex: 1 }}
-        customMapStyle={mode === "dark" ? DARK_MAP_STYLE : []}
-        initialRegion={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
-      >
-        <Marker
-          coordinate={location}
-          title="Ти си тук"
-          description="Начална точка"
-        />
-      </MapView>
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
+        {region && (
+          <MapView
+            style={{
+              height: 200,
+              borderRadius: 20,
+              marginBottom: 20,
+            }}
+            region={region}
+          >
+            <Marker coordinate={region} />
+          </MapView>
+        )}
 
-      <Pressable style={styles.planButton} onPress={goToPreferences}>
-        <Text style={styles.planText}>Планирай маршрут</Text>
-      </Pressable>
+        <Pressable
+          style={{
+            backgroundColor: "#1E90FF",
+            padding: 16,
+            borderRadius: 25,
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+          onPress={useCurrentLocation}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>
+              Използвай текущата локация
+            </Text>
+          )}
+        </Pressable>
+
+        <View
+          style={{
+            backgroundColor: theme.card,
+            padding: 16,
+            borderRadius: 20,
+          }}
+        >
+          <TextInput
+            placeholder="Въведи град"
+            placeholderTextColor={theme.subText}
+            value={cityInput}
+            onChangeText={setCityInput}
+            style={{
+              backgroundColor: theme.input,
+              padding: 14,
+              borderRadius: 15,
+              color: theme.text,
+              marginBottom: 10,
+            }}
+          />
+
+          <Pressable
+            style={{
+              backgroundColor: "#1E90FF",
+              padding: 14,
+              borderRadius: 20,
+              alignItems: "center",
+            }}
+            onPress={useCityInput}
+          >
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Продължи</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  planButton: {
-    position: "absolute",
-    bottom: 40,
-    alignSelf: "center",
-    backgroundColor: "#1E90FF",
-    paddingHorizontal: 36,
-    paddingVertical: 16,
-    borderRadius: 32,
-    elevation: 4,
-  },
-  planText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
