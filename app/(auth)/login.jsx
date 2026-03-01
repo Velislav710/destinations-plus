@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { makeRedirectUri } from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { useEffect, useState } from "react"; // <-- Добавихме useEffect
 import {
   ActivityIndicator,
   Alert,
@@ -25,9 +25,36 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(true); // По подразбиране е true
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // --- НОВА ЛОГИКА: ЗАРЕЖДАНЕ НА ЗАПАЗЕНИ ДАННИ ---
+  useEffect(() => {
+    const loadSavedCredentials = async () => {
+      try {
+        // 1. Взимаме запаметения статус на "Запомни ме"
+        const savedRemember = await AsyncStorage.getItem("rememberMe");
+
+        // Ако е било true, зареждаме и имейла
+        if (savedRemember === "true") {
+          const savedEmail = await AsyncStorage.getItem("savedEmail");
+          if (savedEmail) {
+            setEmail(savedEmail);
+            setRemember(true);
+          }
+        } else {
+          // Ако не е било true, уверяваме се, че чекбоксът е махнат
+          setRemember(false);
+        }
+      } catch (e) {
+        console.log("Грешка при зареждане на данни", e);
+      }
+    };
+
+    loadSavedCredentials();
+  }, []);
+  // ------------------------------------------------
 
   async function handleLogin() {
     if (!email || !password) {
@@ -45,7 +72,17 @@ export default function Login() {
 
       if (error) throw error;
 
-      await AsyncStorage.setItem("rememberMe", remember ? "true" : "false");
+      // --- НОВА ЛОГИКА: ЗАПАЗВАНЕ НА ДАННИ ---
+      if (remember) {
+        // Ако е чекнато, запазваме статуса и имейла
+        await AsyncStorage.setItem("rememberMe", "true");
+        await AsyncStorage.setItem("savedEmail", email);
+      } else {
+        // Ако не е чекнато, изтриваме всичко
+        await AsyncStorage.removeItem("rememberMe");
+        await AsyncStorage.removeItem("savedEmail");
+      }
+      // ----------------------------------------
 
       router.replace("/home");
     } catch (err) {
