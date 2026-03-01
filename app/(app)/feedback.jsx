@@ -1,12 +1,14 @@
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import AppHeader from "../../components/AppHeader";
@@ -134,22 +136,39 @@ export default function Feedback() {
           </Text>
 
           <View style={{ marginBottom: 10 }}>
-            <Text style={{ color: theme.text }}>👨‍💻 Иван Иванов</Text>
-            <Text style={{ color: theme.subText }}>Разработка и дизайн</Text>
+            <Text style={{ color: theme.text }}>👨‍💻 Велислав Велинов</Text>
+            <Text style={{ color: theme.subText }}>IX. Б клас</Text>
           </View>
 
           <View style={{ marginBottom: 10 }}>
-            <Text style={{ color: theme.text }}>👩‍💻 Мария Петрова</Text>
-            <Text style={{ color: theme.subText }}>UX и тестване</Text>
+            <Text style={{ color: theme.text }}>👩‍💻 Йоанна Маркова</Text>
+            <Text style={{ color: theme.subText }}>IX. Б клас</Text>
           </View>
 
-          <View style={{ marginTop: 15 }}>
-            <Text style={{ color: theme.subText }}>
-              Национална олимпиада по ИТ
-            </Text>
-            <Text style={{ color: theme.subText }}>
-              Професионална гимназия по икономика
-            </Text>
+          <View style={{ marginTop: 15, gap: 20 }}>
+            <TouchableOpacity
+              onPress={() =>
+                Linking.openURL("https://edusoft.fmi.uni-sofia.bg/")
+              }
+            >
+              <Text
+                style={{ color: "#809fff", textDecorationLine: "underline" }}
+              >
+                Национална олимпиада по ИТ
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() =>
+                Linking.openURL("https://pgi-pernik.bg-schools.com/")
+              }
+            >
+              <Text
+                style={{ color: "#809fff", textDecorationLine: "underline" }}
+              >
+                Професионална гимназия по икономика град Перник
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>

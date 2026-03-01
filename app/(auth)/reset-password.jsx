@@ -1,15 +1,17 @@
+import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
+import ThemeToggle from "../../components/ThemeToggle";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 
@@ -27,7 +29,6 @@ export default function ResetPassword() {
 
   async function handleDeepLink() {
     const url = await Linking.getInitialURL();
-
     if (!url) return;
 
     const { queryParams } = Linking.parse(url);
@@ -40,6 +41,9 @@ export default function ResetPassword() {
 
       if (!error) {
         setSessionReady(true);
+      } else {
+        Alert.alert("Грешка", "Невалиден или изтекъл линк.");
+        router.replace("/login");
       }
     }
   }
@@ -60,7 +64,6 @@ export default function ResetPassword() {
       if (error) throw error;
 
       Alert.alert("Успешно", "Паролата беше сменена успешно.");
-
       router.replace("/login");
     } catch (err) {
       console.log("UPDATE ERROR →", err);
@@ -68,6 +71,25 @@ export default function ResetPassword() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Докато чакаме session
+  if (!sessionReady) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.bg,
+        }}
+      >
+        <ActivityIndicator size="large" color="#1E90FF" />
+        <Text style={{ marginTop: 15, color: theme.text }}>
+          Проверка на линка...
+        </Text>
+      </View>
+    );
   }
 
   return (
@@ -79,21 +101,31 @@ export default function ResetPassword() {
         backgroundColor: theme.bg,
       }}
     >
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: "bold",
-          marginBottom: 10,
-          color: theme.text,
-        }}
-      >
-        Нова парола
-      </Text>
+      {/* THEME TOGGLE */}
+      <View style={{ position: "absolute", top: 50, right: 25 }}>
+        <ThemeToggle />
+      </View>
+
+      {/* HEADER */}
+      <View style={{ alignItems: "center", marginBottom: 30 }}>
+        <Ionicons name="lock-closed-outline" size={60} color="#1E90FF" />
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "bold",
+            color: theme.text,
+            marginTop: 10,
+          }}
+        >
+          Нова парола
+        </Text>
+      </View>
 
       <Text
         style={{
           marginBottom: 25,
-          color: theme.text,
+          color: theme.subText,
+          textAlign: "center",
           lineHeight: 20,
         }}
       >
@@ -123,7 +155,6 @@ export default function ResetPassword() {
           alignItems: "center",
         }}
         onPress={handleUpdatePassword}
-        disabled={!sessionReady}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />

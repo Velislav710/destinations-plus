@@ -1,14 +1,16 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
+import ThemeToggle from "../../components/ThemeToggle";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 
@@ -57,21 +59,31 @@ export default function ForgotPassword() {
         backgroundColor: theme.bg,
       }}
     >
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: "bold",
-          marginBottom: 10,
-          color: theme.text,
-        }}
-      >
-        Забравена парола
-      </Text>
+      {/* THEME TOGGLE */}
+      <View style={{ position: "absolute", top: 50, right: 25 }}>
+        <ThemeToggle />
+      </View>
+
+      {/* HEADER ICON */}
+      <View style={{ alignItems: "center", marginBottom: 30 }}>
+        <Ionicons name="key-outline" size={60} color="#1E90FF" />
+        <Text
+          style={{
+            fontSize: 22,
+            fontWeight: "bold",
+            color: theme.text,
+            marginTop: 10,
+          }}
+        >
+          Забравена парола
+        </Text>
+      </View>
 
       <Text
         style={{
           marginBottom: 25,
-          color: theme.text,
+          color: theme.subText,
+          textAlign: "center",
           lineHeight: 20,
         }}
       >

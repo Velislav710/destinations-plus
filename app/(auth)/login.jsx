@@ -1,107 +1,233 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import AppHeader from '../../components/AppHeader';
-import { translateAuthError } from '../../lib/authErrors';
-import { supabase } from '../../lib/supabase';
-import { useTheme } from '../../lib/theme';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { makeRedirectUri } from "expo-auth-session";
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+
+import AppHeader from "../../components/AppHeader";
+import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../lib/theme";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function Login() {
+  const router = useRouter();
   const { theme } = useTheme();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
 
-  async function signIn() {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-    if (error) {
-      alert(translateAuthError(error.message));
-    } else {
-      router.replace('/(app)/home');
+  async function handleLogin() {
+    if (!email || !password) {
+      Alert.alert("Грешка", "Попълнете всички полета.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      await AsyncStorage.setItem("rememberMe", remember ? "true" : "false");
+
+      router.replace("/home");
+    } catch (err) {
+      Alert.alert("Грешка", "Невалиден имейл или парола.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function signInWithGoogle() {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-    });
+  async function handleGoogleLogin() {
+    try {
+      setGoogleLoading(true);
+
+      const redirectTo = makeRedirectUri({
+        scheme: "destinationsplus",
+      });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        router.replace("/home");
+      }
+    } catch (err) {
+      console.log("GOOGLE LOGIN ERROR →", err);
+      Alert.alert("Грешка", "Проблем при вход с Google.");
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <AppHeader title="Вход" />
 
-      <View style={[styles.card, { backgroundColor: theme.card }]}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          padding: 25,
+        }}
+      >
+        {/* ЛОГО */}
+        <View style={{ alignItems: "center", marginBottom: 40 }}>
+          <Ionicons name="earth" size={60} color="#1E90FF" />
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: theme.text,
+              marginTop: 10,
+            }}
+          >
+            ДестинацииПлюс
+          </Text>
+        </View>
+
         <TextInput
           placeholder="Имейл"
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.subText}
+          autoCapitalize="none"
+          keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
-          style={styles.input}
+          style={{
+            backgroundColor: theme.card,
+            padding: 15,
+            borderRadius: 20,
+            color: theme.text,
+            marginBottom: 15,
+          }}
         />
 
         <TextInput
           placeholder="Парола"
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.subText}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
-          style={styles.input}
+          style={{
+            backgroundColor: theme.card,
+            padding: 15,
+            borderRadius: 20,
+            color: theme.text,
+            marginBottom: 10,
+          }}
         />
 
-        <Pressable style={styles.primary} onPress={signIn}>
-          <Text style={styles.primaryText}>Вход</Text>
+        {/* REMEMBER ME */}
+        <Pressable
+          onPress={() => setRemember(!remember)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+        >
+          <Ionicons
+            name={remember ? "checkbox" : "square-outline"}
+            size={20}
+            color="#1E90FF"
+          />
+          <Text
+            style={{
+              marginLeft: 8,
+              color: theme.text,
+            }}
+          >
+            Запомни ме
+          </Text>
         </Pressable>
 
-        <Pressable style={styles.google} onPress={signInWithGoogle}>
-          <Text style={styles.primaryText}>Вход с Google</Text>
+        {/* LOGIN BUTTON */}
+        <Pressable
+          style={{
+            backgroundColor: "#1E90FF",
+            padding: 16,
+            borderRadius: 25,
+            alignItems: "center",
+            marginBottom: 15,
+          }}
+          onPress={handleLogin}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Вход</Text>
+          )}
         </Pressable>
 
-        <Pressable onPress={() => router.push('/register')}>
-          <Text style={styles.link}>Създай профил</Text>
+        {/* GOOGLE LOGIN */}
+        <Pressable
+          style={{
+            backgroundColor: "#fff",
+            padding: 16,
+            borderRadius: 25,
+            alignItems: "center",
+            marginBottom: 15,
+            borderWidth: 1,
+            borderColor: "#ddd",
+          }}
+          onPress={handleGoogleLogin}
+        >
+          {googleLoading ? (
+            <ActivityIndicator />
+          ) : (
+            <Text style={{ fontWeight: "bold", color: "#000" }}>
+              Вход с Google
+            </Text>
+          )}
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/forgot-password")}>
+          <Text
+            style={{
+              textAlign: "center",
+              color: "#1E90FF",
+              marginBottom: 10,
+            }}
+          >
+            Забравена парола?
+          </Text>
+        </Pressable>
+
+        <Pressable onPress={() => router.push("/register")}>
+          <Text
+            style={{
+              textAlign: "center",
+              color: theme.text,
+            }}
+          >
+            Нямаш акаунт? Регистрация
+          </Text>
         </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  card: {
-    margin: 20,
-    padding: 20,
-    borderRadius: 20,
-  },
-  input: {
-    borderBottomWidth: 1,
-    borderColor: '#2E4A67',
-    paddingVertical: 12,
-    color: '#fff',
-    marginBottom: 16,
-  },
-  primary: {
-    backgroundColor: '#1E90FF',
-    padding: 14,
-    borderRadius: 14,
-    marginTop: 10,
-  },
-  google: {
-    backgroundColor: '#DB4437',
-    padding: 14,
-    borderRadius: 14,
-    marginTop: 10,
-  },
-  primaryText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  link: {
-    textAlign: 'center',
-    color: '#4DA3FF',
-    marginTop: 16,
-  },
-});
