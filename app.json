@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "DestinationsPlus",
-    "slug": "destinations-plus",
+    "slug": "destinations-pls",
     "scheme": "destinationsplus",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,7 +11,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.velislav10.destinationsplus",
+      "package": "com.noit.destinationsplus",
       "versionCode": 1
     },
     "web": {
@@ -28,7 +28,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "6a1a6c91-7748-42d6-a6e6-d9dce5d14ac8"
+        "projectId": "13f4a821-e29e-4391-b6f1-a62449f9a993"
       }
     }
   }
