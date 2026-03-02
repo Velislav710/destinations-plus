@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import {
   DrawerContentScrollView,
   DrawerItemList,
@@ -6,24 +7,15 @@ import { router } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTheme } from "../../lib/theme";
-// Ако използвате AsyncStorage за сесия:
-// import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function CustomDrawerContent(props) {
-  const { theme, logout } = useTheme(); // Извличаме logout функцията от контекста
+  const { theme, logout } = useTheme();
 
   const handleLogout = async () => {
     try {
-      // 1. Ако имате специфична logout функция в контекста, я извикайте
       if (logout) {
         await logout();
       }
-
-      // 2. Ако просто трябва да изчистите локалното състояние ръчно:
-      // await AsyncStorage.removeItem("userToken");
-
-      // 3. Пренасочване към началния (login) екран
-      // Използваме replace, за да не може потребителят да се върне назад с бутона "Back"
       router.replace("/");
     } catch (error) {
       console.error("Грешка при изход:", error);
@@ -31,22 +23,32 @@ function CustomDrawerContent(props) {
   };
 
   return (
-    <DrawerContentScrollView {...props} style={{ backgroundColor: theme.card }}>
-      {/* Рендерира стандартните екрани (Начало, Планиране...) */}
-      <DrawerItemList {...props} />
+    <DrawerContentScrollView
+      {...props}
+      contentContainerStyle={{ flex: 1 }}
+      style={{ backgroundColor: theme.card }}
+    >
+      {/* HEADER */}
+      <View style={[styles.header, { backgroundColor: theme.card }]}>
+        <Ionicons name="airplane" size={28} color={theme.primary} />
+        <Text style={[styles.appTitle, { color: theme.text }]}>
+          ДестинацииПлюс
+        </Text>
+      </View>
 
-      {/* Бутон за Изход */}
-      <View style={styles.footerContainer}>
+      {/* MENU ITEMS */}
+      <View style={{ flex: 1 }}>
+        <DrawerItemList {...props} />
+      </View>
+
+      {/* LOGOUT BUTTON */}
+      <View style={[styles.footerContainer, { borderTopColor: theme.border }]}>
         <TouchableOpacity
-          style={[
-            styles.logoutButton,
-            { backgroundColor: theme.primary + "20" },
-          ]}
+          style={[styles.logoutButton, { backgroundColor: theme.primary }]}
           onPress={handleLogout}
         >
-          <Text style={[styles.logoutText, { color: theme.primary }]}>
-            Изход 🚪
-          </Text>
+          <Ionicons name="log-out-outline" size={18} color="#ffffff" />
+          <Text style={[styles.logoutText, { color: "#ffffff" }]}>Изход</Text>
         </TouchableOpacity>
       </View>
     </DrawerContentScrollView>
@@ -63,43 +65,97 @@ export default function AppLayout() {
         headerShown: false,
         drawerStyle: {
           backgroundColor: theme.card,
+          width: 270,
         },
-        drawerActiveTintColor: theme.primary,
+        drawerActiveBackgroundColor: theme.primary,
+        drawerActiveTintColor: "#ffffff",
         drawerInactiveTintColor: theme.text,
+        drawerLabelStyle: {
+          fontSize: 15,
+          fontWeight: "600",
+        },
       }}
     >
-      <Drawer.Screen name="home" options={{ title: "Начало  🏠︎" }} />
-      <Drawer.Screen name="planning" options={{ title: "Планиране 🧭" }} />
+      <Drawer.Screen
+        name="home"
+        options={{
+          title: "Начало",
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Drawer.Screen
+        name="planning"
+        options={{
+          title: "Планиране",
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="compass-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
       <Drawer.Screen
         name="preferences"
-        options={{ title: "Предпочитания  🎯" }}
+        options={{
+          title: "Предпочитания",
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="options-outline" size={size} color={color} />
+          ),
+        }}
       />
-      <Drawer.Screen name="route" options={{ title: "Маршрут  🗺️" }} />
+
+      <Drawer.Screen
+        name="route"
+        options={{
+          title: "Маршрут",
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="map-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
       <Drawer.Screen
         name="feedback"
-        options={{ title: "Обратна връзка  📩" }}
+        options={{
+          title: "Обратна връзка",
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble-outline" size={size} color={color} />
+          ),
+        }}
       />
     </Drawer>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  appTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
   footerContainer: {
-    marginTop: 20,
-    paddingBottom: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 15,
     borderTopWidth: 1,
-    borderTopColor: "#cccccc50",
-    paddingTop: 20,
   },
   logoutButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginHorizontal: 10,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
   },
   logoutText: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

@@ -82,7 +82,7 @@ export default function ForgotPassword() {
       <Text
         style={{
           marginBottom: 25,
-          color: theme.subText,
+          color: "gray",
           textAlign: "center",
           lineHeight: 20,
         }}
