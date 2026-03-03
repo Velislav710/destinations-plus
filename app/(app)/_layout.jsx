@@ -5,11 +5,45 @@ import {
 } from "@react-navigation/drawer";
 import { router } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../lib/theme";
 
 function CustomDrawerContent(props) {
   const { theme, logout } = useTheme();
+
+  const [hasLocation, setHasLocation] = useState(false);
+  const [hasPreferences, setHasPreferences] = useState(false);
+
+  useEffect(() => {
+    checkUserData();
+  }, []);
+
+  async function checkUserData() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data: location } = await supabase
+      .from("user_locations")
+      .select("*")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    const { data: preferences } = await supabase
+      .from("user_preferences")
+      .select("*")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    setHasLocation(!!location);
+    setHasPreferences(!!preferences);
+  }
 
   const handleLogout = async () => {
     try {
@@ -48,7 +82,7 @@ function CustomDrawerContent(props) {
           onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={18} color="#ffffff" />
-          <Text style={[styles.logoutText, { color: "#ffffff" }]}>Изход</Text>
+          <Text style={styles.logoutText}>Изход</Text>
         </TouchableOpacity>
       </View>
     </DrawerContentScrollView>
@@ -57,6 +91,38 @@ function CustomDrawerContent(props) {
 
 export default function AppLayout() {
   const { theme } = useTheme();
+
+  const [hasLocation, setHasLocation] = useState(false);
+  const [hasPreferences, setHasPreferences] = useState(false);
+
+  useEffect(() => {
+    checkUserData();
+  }, []);
+
+  async function checkUserData() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data: location } = await supabase
+      .from("user_locations")
+      .select("*")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    const { data: preferences } = await supabase
+      .from("user_preferences")
+      .select("*")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    setHasLocation(!!location);
+    setHasPreferences(!!preferences);
+  }
 
   return (
     <Drawer
@@ -76,6 +142,7 @@ export default function AppLayout() {
         },
       }}
     >
+      {/* НАЧАЛО */}
       <Drawer.Screen
         name="home"
         options={{
@@ -86,6 +153,7 @@ export default function AppLayout() {
         }}
       />
 
+      {/* ПЛАНИРАНЕ */}
       <Drawer.Screen
         name="planning"
         options={{
@@ -94,8 +162,20 @@ export default function AppLayout() {
             <Ionicons name="compass-outline" size={size} color={color} />
           ),
         }}
+        listeners={{
+          drawerItemPress: (e) => {
+            if (!hasLocation) {
+              e.preventDefault();
+              Alert.alert(
+                "Липсва локация",
+                "Първо трябва да избереш местоположение.",
+              );
+            }
+          },
+        }}
       />
 
+      {/* ПРЕДПОЧИТАНИЯ */}
       <Drawer.Screen
         name="preferences"
         options={{
@@ -106,6 +186,7 @@ export default function AppLayout() {
         }}
       />
 
+      {/* МАРШРУТ */}
       <Drawer.Screen
         name="route"
         options={{
@@ -114,8 +195,20 @@ export default function AppLayout() {
             <Ionicons name="map-outline" size={size} color={color} />
           ),
         }}
+        listeners={{
+          drawerItemPress: (e) => {
+            if (!hasLocation || !hasPreferences) {
+              e.preventDefault();
+              Alert.alert(
+                "Липсват данни",
+                "Първо избери местоположение и въведи предпочитания.",
+              );
+            }
+          },
+        }}
       />
 
+      {/* ОБРАТНА ВРЪЗКА */}
       <Drawer.Screen
         name="feedback"
         options={{
@@ -157,5 +250,6 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 15,
     fontWeight: "600",
+    color: "#ffffff",
   },
 });
