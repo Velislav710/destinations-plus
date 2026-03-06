@@ -10,11 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker } from "../../components/MapView";
 import { generateAIItinerary } from "../../lib/ai/openaiPlanner";
 import { supabase } from "../../lib/supabase";
-
-const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY;
 
 export default function Route() {
   const [loading, setLoading] = useState(true);
@@ -60,28 +58,20 @@ export default function Route() {
 
       setLocation(coords);
 
-      const geoRes = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.lat},${coords.lon}&key=${GOOGLE_KEY}`,
+      // ✅ Single call to your Express proxy instead of calling Google directly
+      const proxyRes = await fetch(
+        `https://destinationsplus-api.noit.eu/api/places?lat=${coords.lat}&lon=${coords.lon}&radius=${pref.radius}`,
       );
-      const geoData = await geoRes.json();
+      const proxyData = await proxyRes.json();
+      console.log("proxyData:", JSON.stringify(proxyData));
+      console.log("places count:", proxyData.places?.length);
 
-      const city =
-        geoData.results[0]?.address_components.find((c) =>
-          c.types.includes("locality"),
-        )?.long_name || "Твоят град";
-
-      setCityName(city);
-
-      const placesRes = await fetch(
-        `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${coords.lat},${coords.lon}&radius=${pref.radius}&type=tourist_attraction&key=${GOOGLE_KEY}`,
-      );
-
-      const placesData = await placesRes.json();
-      const results = placesData.results.slice(0, 15);
+      setCityName(proxyData.city);
+      const results = proxyData.places;
       setPlaces(results);
 
       const aiPlan = await generateAIItinerary({
-        city,
+        city: proxyData.city,
         days: pref.days,
         preferences: pref,
         places: results,

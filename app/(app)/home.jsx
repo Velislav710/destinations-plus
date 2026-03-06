@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker } from "../../components/MapView.web";
 
 import AppHeader from "../../components/AppHeader";
 import { supabase } from "../../lib/supabase";
@@ -29,15 +29,71 @@ export default function Home() {
   async function saveLocation(lat, lon) {
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
-    await supabase.from("user_locations").insert([
-      {
-        user_id: user.id,
-        latitude: lat,
-        longitude: lon,
-      },
-    ]);
+    if (authError || !user) {
+      console.error("Auth error:", authError);
+      throw new Error("Not authenticated");
+    }
+
+    const { error: insertError } = await supabase
+      .from("user_locations")
+      .insert([
+        {
+          user_id: user.id,
+          latitude: lat,
+          longitude: lon,
+        },
+      ]);
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      throw new Error(insertError.message);
+    }
+  }
+
+  async function useCityInput() {
+    if (!cityInput.trim()) {
+      Alert.alert("Грешка", "Въведи град");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cityInput)}&key=${GOOGLE_KEY}`,
+      );
+
+      const data = await res.json();
+      console.log("Geocode response:", data);
+
+      if (!data.results?.length) {
+        Alert.alert("Грешка", "Градът не е намерен");
+        return;
+      }
+
+      const loc = data.results[0].geometry.location;
+
+      setRegion({
+        latitude: loc.lat,
+        longitude: loc.lng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      });
+
+      await saveLocation(loc.lat, loc.lng);
+      router.push("/preferences");
+    } catch (err) {
+      console.error("useCityInput error:", err);
+      Alert.alert(
+        "Грешка",
+        err.message || "Проблем при запазване на локацията",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function useCurrentLocation() {

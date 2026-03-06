@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "DestinationsPlus",
+    "name": "ДестинацииПлюс",
     "slug": "destinations-pls",
     "scheme": "destinationsplus",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon.jpg",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
@@ -16,12 +16,9 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.jpg"
     },
-    "plugins": [
-      "expo-router",
-      "expo-web-browser"
-    ],
+    "plugins": ["expo-router", "expo-web-browser"],
     "experiments": {
       "typedRoutes": true
     },
